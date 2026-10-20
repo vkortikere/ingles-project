@@ -1,0 +1,918 @@
+<title>Skedaddle</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Figtree:wght@400;600;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: one stage like a car window at night; cardboard-box cards on top; toolbar and field notes underneath. */
+:root{
+  --night:#0e1822; --asphalt:#18252f; --line:#2c3c48;
+  --kraft:#cfa166; --kraft-ink:#2a1c0f; --tape:#efe5bf;
+  --red:#d9482b; --calm:#8cc4ae; --text:#efe7d6; --muted:#9fb0ba;
+  --display:"Permanent Marker","Marker Felt","Comic Sans MS",cursive;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"Courier Prime","Courier New",monospace;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{background:var(--night);color:var(--text)}
+body{font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,5vw,42px);line-height:1;margin:0;letter-spacing:.01em;color:var(--kraft);transform:rotate(-1.5deg)}
+.byline{color:var(--muted);font-size:13px;margin:0}
+.stage{position:relative;width:100%;max-width:100%;aspect-ratio:960/600;background:#000;border-radius:6px;overflow:hidden;
+  box-shadow:0 0 0 1px var(--line),0 20px 44px rgba(0,0,0,.5)}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(7,11,17,.62);z-index:5}
+.card{position:relative;width:100%;max-width:570px;max-height:100%;overflow:auto;background:var(--kraft);color:var(--kraft-ink);
+  padding:34px 26px 20px;border-radius:2px;box-shadow:0 12px 34px rgba(0,0,0,.55);
+  background-image:repeating-linear-gradient(90deg,rgba(90,55,20,.05) 0 2px,transparent 2px 7px),repeating-linear-gradient(0deg,rgba(255,240,210,.05) 0 1px,transparent 1px 5px)}
+.card::before{content:"";position:absolute;top:8px;left:50%;width:130px;height:22px;transform:translateX(-50%) rotate(-2deg);background:var(--tape);opacity:.85;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.kicker{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8e2a14;margin:0 0 4px}
+.card h2{font-family:var(--display);font-weight:400;font-size:clamp(22px,3.6vw,31px);line-height:1.15;margin:0 0 6px;text-wrap:balance}
+.card .place{font-size:13px;color:#5b3f22;margin:0 0 12px;font-weight:600}
+.card p{margin:0 0 10px}
+.quote{font-family:var(--mono);font-size:14px;border-left:3px solid var(--kraft-ink);padding:2px 0 2px 12px;margin:10px 0}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px}
+.tag{font-family:var(--mono);font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8e2a14;border:2px solid #8e2a14;padding:2px 8px;border-radius:2px;transform:rotate(-1.5deg)}
+.hint{font-size:13px;background:rgba(42,28,15,.09);border-left:3px solid var(--kraft-ink);padding:6px 10px;margin:10px 0 0}
+.card ul{margin:6px 0 10px;padding-left:18px}
+.card li{margin:0 0 6px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin:12px 0}
+.stat{border:1.5px dashed rgba(42,28,15,.45);padding:8px 10px}
+.stat b{display:block;font-family:var(--display);font-size:24px;font-weight:400;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5b3f22;font-weight:700}
+.ledger{font-family:var(--mono);font-size:13px;background:rgba(255,248,230,.45);padding:10px 12px;margin:8px 0 10px;list-style:none}
+.ledger li{display:flex;justify-content:space-between;gap:12px;border-bottom:1px dotted rgba(42,28,15,.35);padding:3px 0;margin:0}
+.ledger li span:last-child{color:#8e2a14;text-align:right}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.btn{font:700 14px var(--body);padding:9px 16px;border-radius:2px;border:2px solid var(--kraft-ink);background:transparent;color:var(--kraft-ink);cursor:pointer}
+.btn.primary{background:var(--kraft-ink);color:var(--tape)}
+.btn:hover{transform:translateY(-1px)}
+.btn:focus-visible,.tool:focus-visible{outline:3px solid var(--tape);outline-offset:2px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.toolbar .grp{display:flex;flex-wrap:wrap;gap:8px}
+.tool{font:700 13px var(--body);background:var(--asphalt);color:var(--text);border:1px solid var(--line);padding:9px 14px;border-radius:4px;cursor:pointer;min-height:42px}
+.tool.go{background:var(--red);border-color:var(--red);color:#fff}
+.tool.give{background:var(--calm);border-color:var(--calm);color:#10231c}
+.tool:disabled{opacity:.4;cursor:default}
+.keys{color:var(--muted);font-size:13px;margin:0}
+kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--line);background:var(--asphalt);padding:1px 6px;border-radius:3px;color:var(--text)}
+.guide{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px;border-top:1px solid var(--line);padding-top:16px}
+.guide > div{min-width:0}
+.guide h3{font-family:var(--display);font-weight:400;font-size:20px;margin:0 0 6px}
+.guide h3.calm{color:var(--calm)} .guide h3.chaos{color:var(--red)} .guide h3.how{color:var(--kraft)}
+.guide ul{margin:0;padding-left:18px;color:#cdd6db;font-size:14px}
+.guide li{margin-bottom:4px}
+@media (max-width:720px){
+  .overlay{position:fixed;padding:16px max(16px,env(safe-area-inset-left,0px));padding-top:max(16px,env(safe-area-inset-top,0px));padding-bottom:max(16px,env(safe-area-inset-bottom,0px))}
+  .card{padding:32px 18px 16px}
+}
+@media (prefers-reduced-motion:reduce){.btn:hover{transform:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Skedaddle</h1>
+    <p class="byline">A packing game based on Jeannette Walls's <i>The Glass Castle</i></p>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="game" width="960" height="600" aria-label="Game screen"></canvas>
+    <div class="overlay" id="ov" hidden><div class="card" id="card" role="dialog" aria-live="polite"></div></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="grp">
+      <button class="tool" id="rotBtn" type="button" disabled>Rotate item (R)</button>
+      <button class="tool go" id="goBtn" type="button" hidden>Load up and go</button>
+      <button class="tool give" id="giveBtn" type="button" hidden>Give it to Maureen</button>
+    </div>
+    <div class="grp">
+      <button class="tool" id="muteBtn" type="button">Sound: on</button>
+      <button class="tool" id="notesBtn" type="button">Designer's notes</button>
+    </div>
+  </div>
+  <p class="keys">Drag an item into the car, or tap it and then tap where you want it to go. <kbd>R</kbd> rotates whatever you are holding. You can also drag an item back out if you want to unpack it.</p>
+
+  <section class="guide" aria-label="Field guide">
+    <div>
+      <h3 class="calm">Calm</h3>
+      <ul>
+        <li>Soft music and no timer. Click on your things to make the place feel like home.</li>
+        <li>The Home meter goes up every time you unpack something.</li>
+        <li>You never know how long the calm is going to last.</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="chaos">Chaos</h3>
+      <ul>
+        <li>Dad (or the weather) gives you seconds instead of minutes.</li>
+        <li>Dad's things go in first, and yours have to fit around them.</li>
+        <li>Anything that doesn't make it gets stamped LEFT BEHIND.</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="how">The ledger</h3>
+      <ul>
+        <li>The game keeps a list of everything you lose.</li>
+        <li>You get to see it at the end, after the last chapter.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+"use strict";
+const VW=960, VH=600, C=56;
+const cv=document.getElementById('game'), ctx=cv.getContext('2d');
+function resize(){const d=Math.min(window.devicePixelRatio||1,2);cv.width=VW*d;cv.height=VH*d;ctx.setTransform(d,0,0,d,0,0);}
+resize(); addEventListener('resize',resize);
+const F={disp:'"Permanent Marker","Marker Felt",cursive',body:'Figtree,system-ui,sans-serif',mono:'"Courier Prime","Courier New",monospace'};
+
+/* ---------- Items ---------- */
+const ITEMS={
+  tink:{name:'Tinkerbell',w:1,h:1,col:'#e7b7c9',icon:'doll',note:'Your favorite toy. You held a match too close to her face and it melted, but you put bandages on it and she is still your favorite toy anyway.'},
+  blanket:{name:'Army blanket',w:2,h:2,col:'#7d8653',icon:'blanket',note:'A scratchy army-surplus blanket. When the family sleeps out in the desert this is basically your bed.'},
+  cat:{name:'Quixote',w:2,h:1,col:'#b3b2aa',icon:'cat',note:'The family cat. He is gray and white and missing an ear, and he growls at pretty much everyone.'},
+  paint:{name:"Mom's paintings",w:3,h:2,col:'#de9550',icon:'paint',note:'Mom would rather paint than cook, so her paintings are leaning up against pretty much every wall in the trailer.'},
+  skillet:{name:'Skillet',w:2,h:2,col:'#4a4a4a',icon:'skillet',dad:true},
+  dutch:{name:'Dutch oven',w:2,h:2,col:'#3d3b3a',icon:'pot',dad:true},
+  plates:{name:'Tin plates',w:2,h:1,col:'#8d949a',icon:'plates',dad:true},
+  archery:{name:'Archery set',w:1,h:3,col:'#8a6a3e',icon:'bow',dad:true},
+  geode:{name:'Geode',w:1,h:1,col:'#9b8bb0',icon:'geode',rock:true,note:'Your favorite kind of rock to find. On the outside it just looks like a boring round rock, but when you break it open the inside is full of white crystals.'},
+  quartz:{name:'Rose quartz',w:1,h:1,col:'#e3a8b4',icon:'quartz',rock:true,note:'Dad wanted this one, so you priced it at six hundred dollars and then lowered it to five hundred and let him have it on credit.'},
+  pyrite:{name:"Fool's gold",w:1,h:1,col:'#cfae4c',icon:'pyrite',rock:true,note:"Iron pyrite, also called fool's gold. Dad says some of it is especially good quality fool's gold so you keep it."},
+  flint:{name:'Flint',w:1,h:1,col:'#6f6b66',icon:'flint',rock:true,note:'You have rock sales out behind the house and charge hundreds of dollars for one piece of flint. The only person who ever buys anything is Dad.'},
+  jar:{name:'Tadpole jar',w:1,h:2,col:'#7fb0a6',icon:'jar',note:'Tadpoles you caught in the pond at the dump, which is where you and Brian go to look for treasure.'},
+  bike:{name:'Your bike',w:3,h:2,col:'#c8553d',icon:'bike',note:'Your own bike. The house on North Third Street is big enough that there is finally room for one.'},
+  orange:{name:'Orange',w:1,h:1,col:'#f0a23b',icon:'orange',note:'An orange from the trees in the backyard. The house actually has orange trees.'},
+  papers:{name:'School papers',w:1,h:2,col:'#ece6d6',icon:'papers',note:'Your schoolwork from the new school. You have only been going there for a little over a month.'},
+  coat:{name:'Thrift-store coat',w:2,h:2,col:'#5f6f86',icon:'coat',note:'Mom bought each of you a warm coat at a thrift store so that you would have something to wear in West Virginia.'},
+  wave:{name:'The Maroon Wave',w:2,h:1,col:'#8d2f3a',icon:'paper',note:'The school newspaper. You work on it late at night, and it is the first thing that makes you feel like there is actually a way out of Welch.'},
+  books:{name:'Library books',w:1,h:2,col:'#4f7f6a',icon:'books',note:'Books from the Welch library. Reading takes you further than any bus ticket you could afford right now.'},
+  clothes:{name:'Your clothes',w:2,h:2,col:'#b9a27a',icon:'shirt',note:'All of your clothes, folded up as small as they can go.'}
+};
+
+/* ---------- Chapters ---------- */
+const CH=[
+{ name:'The Skedaddle', place:'A desert trailer park · Jeannette is three', scene:'desert',
+  text:'The family has been living in this trailer park for a few months, which for the Walls family is actually a long time. You have your own things here, so click on them to settle in.',
+  themes:['Fear & Instability','Chaos vs. Calm'],
+  hint:'There is no timer right now so take your time.',
+  spots:[['tink',190,410],['blanket',380,425],['cat',580,410],['paint',850,405]], interruptAt:3,
+  alarm:{kicker:'The middle of the night',title:'"Time to pull up stakes!"',
+    body:'<p>Dad comes home in the middle of the night and wakes everybody up.</p><p class="quote">"We had fifteen minutes to gather whatever we needed and pile into the car." (Walls 28)</p><p>Dad already put his own essentials in the trunk of the Blue Goose, so your things have to fit in around his.</p>',btn:'Grab your things'},
+  box:{name:'Trunk of the Blue Goose',kind:'trunk',cols:6,rows:4,fixed:[['skillet',0,0],['dutch',2,0],['plates',0,2],['archery',5,0]]},
+  stageLabel:'STILL IN THE TRAILER', time:40,
+  lines:[[0,'DAD','Time to pull up stakes!'],[.22,'DAD','Just what we need to survive. Leave the rest.'],[.45,'','Mom is out in the yard digging for the jar of cash, because she forgot where she buried it.'],[.68,'DAD','Don’t I always take care of you?'],[.86,'DAD','Why does it take so long to get in the car?']]},
+{ name:'One Thing', place:'Battle Mountain, Nevada · the old train depot', scene:'battle',
+  text:'The family lives in an old train depot, and for once things are actually going pretty well. You spend most of your days looking for rocks in the desert and treasure at the dump. Click on your rocks to build your collection.',
+  themes:['Fear & Instability','Self-sufficiency'],
+  hint:'This is the calmest the family is going to be for a long time.',
+  spots:[['geode',180,380],['quartz',330,330],['pyrite',480,400],['flint',640,350],['jar',800,390]], interruptAt:4,
+  alarm:{kicker:'After the police leave',title:'"Tonight."',
+    body:'<p>A neighbor kid named Billy Deel shoots at you and your siblings with a BB gun, Lori fires back with Dad’s pistol, and the police end up coming to the depot. That night Mom and Dad talk upstairs for a really long time.</p><p class="quote">"We’re going to Phoenix," Dad said.<br>"When?" I asked.<br>"Tonight." (Walls 109)</p><p>Grab a paper bag and fill it as fast as you can.</p>',btn:'Grab a paper bag'},
+  box:{name:'A paper grocery bag',kind:'bag',cols:3,rows:3,fixed:[]},
+  stageLabel:'STILL IN THE DEPOT', time:22,
+  lines:[[0,'DAD','We’re going to Phoenix. Tonight.'],[.45,'LORI','A rock collection isn’t one thing. It’s several things.'],[.75,'','Hold the bag at the bottom so it doesn’t split.']]},
+{ name:'Too Big', place:'Phoenix, Arizona · the house on North Third Street', scene:'phoenix',
+  text:'Grandma Smith’s old house in Phoenix belongs to Mom now. It is big, there are orange trees in the backyard, and you finally have a bike. Things start getting rough again when Dad goes back to drinking, but the house still feels like it could be permanent.',
+  themes:['Fear & Instability','Physical vs. emotional wounds'],
+  hint:'You probably know how this goes by now. Collect what you can.',
+  spots:[['bike',260,395],['orange',560,330],['papers',740,390]], interruptAt:2,
+  alarm:{kicker:'The next morning',title:'"We could each take only one thing."',
+    body:'<p>Mom buys a 1956 Oldsmobile for two hundred dollars and says the family is moving to West Virginia. You are leaving the next morning, and there is not even time to say goodbye to your teachers.</p><p class="quote">"Mom said we could each take only one thing, like the time we left Battle Mountain." (Walls 148)</p><p>Your spot is in the middle of the back seat, squished between Brian and Lori.</p>',btn:'Squeeze into the back seat'},
+  box:{name:'Your spot in the Oldsmobile',kind:'seat',cols:2,rows:2,fixed:[],max:1},
+  stageLabel:'STILL IN THE HOUSE', time:18,
+  lines:[[0,'MOM','One thing each. Like Battle Mountain.'],[.5,'MOM','The bike is too big.'],[.8,'','Dad is sitting in the living room, sulking.']]},
+{ name:'Rain in the Kitchen', place:'93 Little Hobart Street · Welch, West Virginia', scene:'welch',
+  text:'This is Dad’s hometown. The house has no heat, no plumbing, and the kitchen ceiling leaks. Dad built each of you a wooden box with sliding doors and nailed it to the wall above your bed. This time nobody is going anywhere, so unpack.',
+  themes:['Chaos vs. Calm','Fear & Instability'],
+  hint:'No skedaddle this time, so you can actually finish unpacking.',
+  spots:[['wave',330,380],['books',650,380]], interruptAt:2,
+  alarm:{kicker:'A fierce rainstorm',title:'"It rained in the kitchen, too."',
+    body:'<p>The kitchen ceiling fills up with water until it bursts, and nobody ever fixes the roof.</p><p class="quote">"So every time it rained outside, it rained in the kitchen, too." (Walls 177)</p><p>All of your things are on the floor, and the only place that stays dry is the box on the wall. Rocks are fine though, since water doesn’t hurt them.</p>',btn:'Save what you can'},
+  box:{name:'Your box on the wall',kind:'box',cols:3,rows:2,fixed:[]},
+  stageLabel:'ON THE FLOOR', time:26, rain:true,
+  lines:[[0,'','The ceiling is swelling.'],[.4,'','Water is pouring out of the middle of the bulge.'],[.78,'','The ceiling bursts.']]},
+{ name:'Your Own Suitcase', place:'Welch, the night before the bus · Jeannette is seventeen', scene:'night',
+  text:'You saved up enough money to leave for New York City, and this time you are the one who decides when you go and what you take with you.',
+  themes:['Self-sufficiency','Chaos vs. Calm'],
+  hint:'No timer and no Dad, so take as long as you want.',
+  calm:true,
+  box:{name:'Mom’s old dancing-shoe suitcase',kind:'suitcase',cols:4,rows:3,fixed:[]},
+  stageLabel:'YOUR SIDE OF THE ROOM', time:0, lines:[]}
+];
+
+/* ---------- State ---------- */
+const G={};
+let mode='title', T=0;
+function resetRun(){
+  Object.assign(G,{ci:0,owned:[],keep:null,ledger:[],calmT:0,chaosT:0,gave:false,ended:false});
+}
+resetRun();
+function leave(id,how){G.ledger.push({id,name:ITEMS[id].name,ch:G.ci+1,how});}
+
+/* ---------- Sound ---------- */
+let AC=null, muted=false;
+function tone(f1,f2,dur,type,vol,delay){
+  try{
+    if(muted)return;
+    if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();
+    const t=AC.currentTime+(delay||0);
+    const o=AC.createOscillator(),g=AC.createGain();
+    o.type=type||'sine';o.frequency.setValueAtTime(f1,t);o.frequency.exponentialRampToValueAtTime(f2,t+dur);
+    g.gain.setValueAtTime(vol||.06,t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    o.connect(g).connect(AC.destination);o.start(t);o.stop(t+dur+.02);
+  }catch(e){}
+}
+const SFX={
+  pick(){tone(420,520,.07,'triangle',.05);},
+  place(){tone(260,180,.09,'square',.035);tone(520,520,.05,'triangle',.04,.05);},
+  nope(){tone(200,150,.18,'sawtooth',.04);},
+  collect(){tone(660,660,.12,'triangle',.06);tone(990,990,.18,'triangle',.05,.08);},
+  horn(){tone(330,320,.45,'sawtooth',.05);tone(392,380,.45,'sawtooth',.04);},
+  tick(hi){tone(hi?1500:1100,hi?1500:1100,.03,'square',.025);},
+  stamp(){tone(110,60,.18,'square',.07);},
+  drip(){tone(1300,500,.12,'sine',.07);},
+  sad(){[392,349,311,262].forEach((f,i)=>tone(f,f*.98,.35,'triangle',.06,i*.18));},
+  win(){[523,659,784,1046].forEach((f,i)=>tone(f,f,.3,'triangle',.06,i*.12));}
+};
+const MELODY=[523,587,659,784,659,587,523,440,392,440,523,587,523,440,392,0];
+let melT=0, melI=0, tickT=0;
+const muteBtn=document.getElementById('muteBtn');
+function toggleMute(){muted=!muted;muteBtn.textContent='Sound: '+(muted?'off':'on');}
+muteBtn.addEventListener('click',toggleMute);
+
+/* ---------- Pack state ---------- */
+let P=[]; // pieces
+let box=null, BX=0, BY=0, timeLeft=0, lineIdx=0, curLine=null, shake=0, drops=[], dripT=0, home=0, homeShow=0, toastO=null;
+let spots=[], collected=[], caption=null, pendingAlarm=0;
+let held=null, tapHold=false, downPt=null, moved=false, pointer={x:-99,y:-99};
+
+function mkPiece(id,where){const it=ITEMS[id];return {id,w:it.w,h:it.h,where:where||'stage',gx:0,gy:0,sx:0,sy:0,ruined:false,fixed:false};}
+function dims(p){return [p.w,p.h];}
+function rotate(p){const t=p.w;p.w=p.h;p.h=t;}
+function layoutStage(){
+  let x=36,y=150,rowH=0;
+  for(const p of P){ if(p.where!=='stage')continue;
+    const pw=p.w*C,ph=p.h*C;
+    if(x+pw>500){x=36;y+=rowH+18;rowH=0;}
+    p.sx=x;p.sy=y;x+=pw+18;rowH=Math.max(rowH,ph);
+  }
+}
+function placeBox(){BX=Math.round(520+(420-box.cols*C)/2);BY=Math.round(150+(380-box.rows*C)/2);}
+function occupied(except){
+  const o=new Set();
+  for(const p of P){if(p===except||p.ruined)continue;if(p.where==='grid'||p.fixed)for(let x=0;x<p.w;x++)for(let y=0;y<p.h;y++)o.add((p.gx+x)+','+(p.gy+y));}
+  return o;
+}
+function fitReason(p,gx,gy){
+  if((p.w>box.cols||p.h>box.rows)&&(p.h>box.cols||p.w>box.rows))return 'big';
+  if(gx<0||gy<0||gx+p.w>box.cols||gy+p.h>box.rows)return 'edge';
+  if(box.max){const n=P.filter(q=>q!==p&&q.where==='grid'&&!q.fixed).length;if(n>=box.max)return 'max';}
+  const o=occupied(p);
+  for(let x=0;x<p.w;x++)for(let y=0;y<p.h;y++)if(o.has((gx+x)+','+(gy+y)))return 'full';
+  return '';
+}
+function heldCell(p,pt){return [Math.round((pt.x-p.w*C/2-BX)/C),Math.round((pt.y-p.h*C/2-BY)/C)];}
+function inBox(pt){return pt.x>=BX-20&&pt.x<=BX+box.cols*C+20&&pt.y>=BY-20&&pt.y<=BY+box.rows*C+20;}
+
+/* ---------- Flow ---------- */
+const ch=()=>CH[G.ci];
+function startChapter(i){
+  G.ci=i; const c=CH[i];
+  P=[];held=null;tapHold=false;drops=[];curLine=null;lineIdx=0;caption=null;collected=[];pendingAlarm=0;
+  home=0;homeShow=0;
+  spots=(c.spots||[]).map(s=>({id:s[0],x:s[1],y:s[2],got:false,ph:Math.random()*6}));
+  setButtons();
+  showOverlay(`<p class="kicker">Chapter ${i+1} of 5</p><h2>${c.name}</h2><p class="place">${c.place}</p><p>${c.text}</p>
+    <div class="tags">${c.themes.map(t=>`<span class="tag">${t}</span>`).join('')}</div><p class="hint">${c.hint}</p>`,
+    [{label:c.calm?'Start packing':'Settle in',act:()=>{hideOverlay(); if(c.calm)startPack(); else mode='settle';}}]);
+  mode='card';
+}
+function clickSpot(pt){
+  for(const s of spots){
+    if(s.got)continue;
+    if(Math.hypot(pt.x-s.x,pt.y-s.y)<52){
+      s.got=true;collected.push(s.id);SFX.collect();
+      caption={id:s.id,text:ITEMS[s.id].note};
+      home=Math.round(100*collected.length/spots.length);
+      if(collected.length>=ch().interruptAt&&!pendingAlarm)pendingAlarm=G.ci===3?3.2:2.4;
+      return;
+    }
+  }
+}
+function triggerAlarm(){
+  const c=ch();mode='card';SFX.horn();shake=.6;
+  spots.filter(s=>!s.got&&!(G.ci===0&&s.id==='cat')).forEach(s=>leave(s.id,'Never got to it'));
+  showOverlay(`<p class="kicker">${c.alarm.kicker}</p><h2>${c.alarm.title}</h2>${c.alarm.body}`,[{label:c.alarm.btn,act:()=>{hideOverlay();startPack();}}]);
+}
+function startPack(){
+  const c=ch(); box=c.box; placeBox();
+  P=[];
+  for(const f of box.fixed){const p=mkPiece(f[0],'grid');p.gx=f[1];p.gy=f[2];p.fixed=true;P.push(p);}
+  let ids=[];
+  if(G.ci===0)ids=collected.slice();
+  else if(G.ci===1)ids=G.owned.concat(collected);
+  else if(G.ci===2)ids=(G.keep?[G.keep]:[]).concat(collected);
+  else if(G.ci===3)ids=(G.keep?[G.keep]:[]).concat(G.owned.filter(x=>x!==G.keep),collected);
+  else ids=['clothes'].concat(G.owned);
+  ids.forEach(id=>P.push(mkPiece(id,'stage')));
+  layoutStage();
+  timeLeft=c.time;lineIdx=0;curLine=null;dripT=1.6;drops=[];tickT=0;
+  home=c.calm?0:home;
+  mode='pack';setButtons();
+  if(c.calm){toast('Take your time, nobody is rushing you.');}
+  if(G.ci===4&&G.lostWave)toast('Your copies of The Maroon Wave got ruined by the rain.');
+}
+function packed(){return P.filter(p=>p.where==='grid'&&!p.fixed&&!p.ruined);}
+function unpacked(){return P.filter(p=>(p.where==='stage'||p.where==='held')&&!p.ruined);}
+function finishPack(){
+  if(mode!=='pack')return;
+  if(held){returnHeld();}
+  const c=ch(), i=G.ci, inCar=packed().map(p=>p.id), out=unpacked().map(p=>p.id);
+  mode='card';setButtons();
+  if(i===0){
+    out.filter(id=>id!=='cat').forEach(id=>leave(id,'Left behind'));
+    G.owned=inCar.filter(id=>id!=='cat');
+    leave('cat','Thrown out the car window');
+    SFX.sad();
+    const had=inCar.indexOf('cat')>=0;
+    showOverlay(`<p class="kicker">On the road</p><h2>Quixote</h2>
+      <p>${had?'You made room for Quixote in the car, but it doesn’t end up mattering.':'Quixote rides on your lap.'} He growls and scratches at you, and Mom says cats just don’t like to travel.</p>
+      <p class="quote">"Anyone who didn’t like to travel wasn’t invited on our adventure, Dad said. He stopped the car, grabbed Quixote by the scruff of the neck, and tossed him out the window." (Walls 29)</p>
+      <p>Even if you pack perfectly, there are some things you lose anyway.</p>`,
+      [{label:'Keep driving',act:()=>outro()}]);
+  } else if(i===1){
+    let choices=inCar.slice(); let note='';
+    if(!choices.length){choices=out.slice();note='<p>Your bag is empty, so Dad tells you to grab one thing, fast.</p>';}
+    if(!choices.length){G.keep=null;out.forEach(id=>leave(id,'Left behind'));outro();return;}
+    SFX.stamp();
+    showOverlay(`<p class="kicker">The rules change</p><h2>"You can bring one."</h2>
+      <p>Dad looks at your bag and says the rocks are too heavy.</p>
+      <p class="quote">"Dad allowed each of us to bring only one thing." (Walls 109)</p>${note}<p>Pick one thing. Everything else has to stay in Battle Mountain.</p>`,
+      choices.map(id=>({label:ITEMS[id].name,act:()=>{
+        G.keep=id;
+        inCar.concat(out).filter(x=>x!==id).forEach(x=>leave(x,inCar.indexOf(x)>=0?'Too heavy':'Left behind'));
+        G.owned=[];
+        const jw=id==='geode'?'You picked the same thing Jeannette did.':'Jeannette picked a geode, "its insides coated with tiny white crystals" (Walls 109).';
+        showOverlay(`<p class="kicker">Your one thing</p><h2>${ITEMS[id].name}</h2><p>${jw}</p><p>You hold it with both hands as the car pulls away.</p>`,[{label:'Keep driving',act:()=>outro()}]);
+      }})));
+  } else if(i===2){
+    G.keep=inCar[0]||null;
+    out.forEach(id=>leave(id,id==='bike'?'Too big':'Only one thing'));
+    G.owned=['coat'];
+    showOverlay(`<p class="kicker">In the driveway</p><h2>Dad won’t come.</h2>
+      <p>Dad hated the idea of moving to West Virginia and refused to help. Now he is standing in the doorway with his arms crossed while Mom practices shifting gears.</p>`,
+      [{label:'Shout "We need you!"',act:()=>{
+        SFX.horn();
+        showOverlay(`<p class="kicker">In the driveway</p><h2>He gets in.</h2>
+        <p class="quote">"Then he flicked the cigarette he was smoking into the yard, closed the front door, loped over to the car, and told Mom to move aside—he was driving." (Walls 148)</p>
+        <p>You are wearing the thrift-store coat Mom bought you, so at least that comes with you.</p>`,[{label:'Head east',act:()=>outro()}]);
+      }}]);
+  } else if(i===3){
+    const surv=[];
+    P.forEach(p=>{ if(p.fixed)return;
+      if(p.ruined)return;
+      if(p.where==='grid'||ITEMS[p.id].rock)surv.push(p.id);
+      else {p.ruined=true;leave(p.id,'Ruined by rain');}
+    });
+    G.lostWave=surv.indexOf('wave')<0;
+    if(G.keep&&surv.indexOf(G.keep)<0)G.keep=null;
+    G.owned=surv;
+    outro();
+  }
+}
+function returnHeld(){if(!held)return;held.where='stage';held=null;tapHold=false;layoutStage();}
+function outro(){
+  const i=G.ci; const O=[
+    ['Where are we going?','<p class="quote">"Where are we going, Dad?" I asked.<br>"Wherever we end up," he said. (Walls 29)</p><p>That night you sleep under the stars in the desert. It feels like an adventure, but it also means that you have no idea where home is anymore.</p>'],
+    ['The light in the window','<p>Dad left the upstairs light on in the depot, and you watch it glow through the back window until you can’t see it anymore.</p><p class="quote">"We’d had a streak of it in Battle Mountain, and I wished it had held." (Walls 110)</p>'],
+    ['Heading east','<p>Mom leaves the Phoenix house exactly how it is, with laundry on the line and dirty dishes in the sink, so that burglars will think someone still lives there. Nobody does though.</p>'],
+    ['You stay','<p>The family ends up staying in Welch for years. Nobody wakes you up in the middle of the night to skedaddle anymore, but nothing you own is really safe in that house either.</p><p>So you start planning a different kind of leaving, one where you are the one who picks when.</p>']
+  ][i];
+  showOverlay(`<p class="kicker">Chapter ${i+1} complete</p><h2>${O[0]}</h2>${O[1]}`,[{label:'Next chapter',act:()=>startChapter(i+1)}]);
+}
+function giveAway(){
+  if(mode!=='pack'||G.ci!==4||!G.keep||G.gave)return;
+  const p=P.find(q=>q.id===G.keep);
+  if(p){if(held===p){held=null;tapHold=false;}P.splice(P.indexOf(p),1);layoutStage();}
+  G.gave=true;leave(G.keep,'Given to Maureen');SFX.collect();
+  toast(G.keep==='geode'?'"If she scrubbed it hard, it would sparkle like a diamond."':'You give it to your little sister so it can be hers now.');
+  setButtons();
+}
+function closeSuitcase(){
+  if(mode!=='pack'||G.ci!==4)return;
+  if(held)returnHeld();
+  unpacked().forEach(p=>leave(p.id,'Left behind, on purpose'));
+  home=100;mode='card';setButtons();SFX.win();
+  setTimeout(showEnd,700);
+}
+function showEnd(){
+  mode='end';G.ended=true;
+  const lost=G.ledger.filter(l=>l.how!=='Left behind, on purpose'&&l.how!=='Given to Maureen').length;
+  const rain=G.ledger.filter(l=>l.how==='Ruined by rain').length;
+  const k=G.keep?ITEMS[G.keep].name:null;
+  let keepLine;
+  if(G.gave&&G.keep==='geode')keepLine='<p>You gave the geode to Maureen, which is the same thing Jeannette did.</p><p class="quote">"I wanted to leave everything from the past behind, even the good things, so I gave Maureen my geode." (Walls 274)</p>';
+  else if(G.gave)keepLine=`<p>You gave your ${k.toLowerCase()} to Maureen. Jeannette did the same thing with her geode.</p><p class="quote">"I wanted to leave everything from the past behind, even the good things, so I gave Maureen my geode." (Walls 274)</p>`;
+  else if(k&&packed().some(p=>p.id===G.keep))keepLine=`<p>You kept your ${k.toLowerCase()}. Jeannette gave her geode away because she wanted to leave even the good things behind, but you made a different choice, and this time the choice was actually yours to make.</p>`;
+  else keepLine='<p>Nothing from your old life made it all the way here, so you are leaving with almost nothing, which is exactly what the skedaddle taught you to do.</p>';
+  const rows=G.ledger.map(l=>`<li><span>${l.name} <small>(ch. ${l.ch})</small></span><span>${l.how}</span></li>`).join('');
+  showOverlay(`<p class="kicker">Epilogue · the bus to New York</p><h2>This time, you decided.</h2>
+    <p>For the first time nobody gave you fifteen minutes. You picked the day, you packed your own suitcase, and the Home meter finally filled all the way up.</p>
+    ${keepLine}
+    <div class="stats">
+      <div class="stat"><b>${lost}</b><span>Things taken from you</span></div>
+      <div class="stat"><b>${rain}</b><span>Ruined by rain</span></div>
+      <div class="stat"><b>${Math.round(G.chaosT)}s</b><span>Packing in a panic</span></div>
+      <div class="stat"><b>${Math.round(G.calmT)}s</b><span>Calm</span></div>
+    </div>
+    <p class="kicker" style="margin-top:12px">The ledger</p>
+    <ul class="ledger">${rows||'<li><span>Nothing</span><span>—</span></li>'}</ul>
+    <p>The game kept track of every single thing you lost, but it has no way to count what all of that packing taught you.</p>`,
+    [{label:'Play again',act:()=>{resetRun();startChapter(0);}},{label:'Designer’s notes',act:()=>showNotes(showEnd)}]);
+}
+
+/* ---------- Overlays ---------- */
+const ov=document.getElementById('ov'),card=document.getElementById('card');
+let primaryBtn=null,ovAt=0;
+function showOverlay(html,buttons){
+  card.innerHTML=html;const row=document.createElement('div');row.className='btns';primaryBtn=null;
+  buttons.forEach((b,i)=>{const el=document.createElement('button');el.type='button';el.className='btn'+(i===0?' primary':'');el.textContent=b.label;
+    el.addEventListener('click',()=>{if(performance.now()-ovAt<300)return;b.act();});row.appendChild(el);if(i===0)primaryBtn=el;});
+  card.appendChild(row);ov.hidden=false;ovAt=performance.now();card.scrollTop=0;
+}
+function hideOverlay(){ov.hidden=true;primaryBtn=null;}
+function notesHTML(){return `<p class="kicker">Designer’s notes</p><h2>How the game reads the memoir</h2>
+<ul>
+<li><b>Calm, then chaos (Chaos vs. Calm).</b> Every chapter starts with no timer and soft music while you unpack. Then, without any warning, the music stops and a timer starts. By never telling the player how long the calm is going to last, the game puts them in the same position as the Walls kids, who never knew when they would have to leave next.</li>
+<li><b>The Home meter never fills (Fear &amp; Instability).</b> The skedaddle always happens before you can finish settling in. This is important because it shows that the kids never really got to feel at home anywhere. The meter only reaches 100% once, in the last chapter, when Jeannette packs on her own schedule.</li>
+<li><b>Dad’s things go in first.</b> The skillet, the Dutch oven and the archery set are already in the trunk before you even start. Rather than the kids’ needs coming first, their things have to fit around their parents’ priorities, which is how it is in the book too.</li>
+<li><b>Quixote.</b> Packing the cat doesn’t change anything because Dad throws him out the window either way. This shows that some losses have nothing to do with how well you plan.</li>
+<li><b>The rules change.</b> In Battle Mountain you fill up a whole bag, and then Dad says you can only bring one thing. In Phoenix the bike just doesn’t fit. This shows that instability means you can’t even count on the rules staying the same.</li>
+<li><b>Welch: staying isn’t the same as being safe.</b> The family finally stops moving, but the roof leaks and the rain ruins anything that isn’t in your box. The only things that survive are rocks.</li>
+<li><b>Your own suitcase (Self-sufficiency).</b> There is no timer, no Dad, and the music is calm. Jeannette is finally the one in control of what gets packed. Giving the geode to Maureen is optional, just like it was for her, since she chose to leave even the good things behind.</li>
+<li><b>The ledger.</b> The ending lists everything you lost and how you lost it. It only keeps track of physical things, which leaves the emotional cost for the player to think about.</li>
+</ul>`;}
+let notesBack=null, pausedFrom='';
+function showNotes(back){notesBack=back;showOverlay(notesHTML(),[{label:'Back',act:()=>notesBack&&notesBack()}]);}
+document.getElementById('notesBtn').addEventListener('click',()=>{
+  if(mode==='settle'||mode==='pack'){const m=mode;pausedFrom=m;showNotes(()=>{hideOverlay();mode=m;});mode='paused';return;}
+  if(mode==='title'){showNotes(showTitle);return;}
+  if(mode==='end'){showNotes(showEnd);return;}
+  const saved=card.innerHTML, savedBtns=[...card.querySelectorAll('.btn')];
+  const acts=savedBtns.map(b=>b);
+  showNotes(()=>{card.innerHTML='';const tmp=document.createElement('div');tmp.innerHTML=saved;
+    while(tmp.firstChild){if(tmp.firstChild.className==='btns'){tmp.removeChild(tmp.firstChild);continue;}card.appendChild(tmp.firstChild);}
+    const row=document.createElement('div');row.className='btns';acts.forEach(a=>row.appendChild(a));card.appendChild(row);ovAt=performance.now();});
+});
+function showTitle(){
+  mode='title';resetRun();
+  showOverlay(`<p class="kicker">A packing game based on Jeannette Walls’s memoir</p><h2>Skedaddle</h2>
+    <p>The Walls family is always doing "the skedaddle," which is when they pack up in the middle of the night and leave town before the bill collectors catch up to them. In every chapter you get some time to make a place feel like home, and then the clock starts.</p>
+    <p class="hint">There are five chapters and it takes about eight minutes. Drag things into the car, or tap something and then tap where you want it to go. Press R or the Rotate button to turn whatever you are holding.</p>`,
+    [{label:'Begin',act:()=>startChapter(0)},{label:'Designer’s notes',act:()=>showNotes(showTitle)}]);
+}
+
+/* ---------- Buttons ---------- */
+const rotBtn=document.getElementById('rotBtn'),goBtn=document.getElementById('goBtn'),giveBtn=document.getElementById('giveBtn');
+function setButtons(){
+  const pk=mode==='pack';
+  rotBtn.disabled=!(pk&&held);
+  goBtn.hidden=!pk;
+  goBtn.textContent=G.ci===4?'Close the suitcase':G.ci===3?'Done':G.ci===1?'Done packing':'Load up and go';
+  giveBtn.hidden=!(pk&&G.ci===4&&G.keep&&!G.gave&&P.some(p=>p.id===G.keep));
+  if(!giveBtn.hidden)giveBtn.textContent='Give your '+ITEMS[G.keep].name.toLowerCase()+' to Maureen';
+}
+rotBtn.addEventListener('click',()=>rotateHeld());
+goBtn.addEventListener('click',()=>{if(G.ci===4)closeSuitcase();else finishPack();});
+giveBtn.addEventListener('click',giveAway);
+function rotateHeld(){if(mode==='pack'&&held){rotate(held);SFX.pick();}}
+
+/* ---------- Input ---------- */
+function pt(e){const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)*VW/r.width,y:(e.clientY-r.top)*VH/r.height};}
+function pieceAt(p){
+  for(let i=P.length-1;i>=0;i--){const q=P[i];if(q.fixed||q.ruined||q.where==='held')continue;
+    let x,y;if(q.where==='grid'){x=BX+q.gx*C;y=BY+q.gy*C;}else{x=q.sx;y=q.sy;}
+    if(p.x>=x&&p.x<=x+q.w*C&&p.y>=y&&p.y<=y+q.h*C)return q;}
+  return null;
+}
+function tryDrop(p0){
+  const p=held;if(!p)return;
+  const [gx,gy]=heldCell(p,p0);
+  const r=fitReason(p,gx,gy);
+  if(!r){p.where='grid';p.gx=gx;p.gy=gy;held=null;tapHold=false;SFX.place();setButtons();return;}
+  if(inBox(p0)){
+    SFX.nope();
+    if(r==='big')toast(p.id==='bike'?'Too big. Mom says the bike has to stay.':'That won’t fit in there no matter how you turn it.');
+    else if(r==='max')toast('Only one thing is allowed. Take something out first.');
+    else toast(r==='full'?'There is no room there. Try another spot, or rotate it (R).':'It hangs over the edge, so try another spot.');
+  }
+  returnHeld();setButtons();
+}
+cv.addEventListener('pointerdown',e=>{
+  const p=pt(e);pointer=p;
+  if(mode==='settle'){clickSpot(p);return;}
+  if(mode!=='pack')return;
+  e.preventDefault();
+  if(held&&tapHold){tryDrop(p);return;}
+  const q=pieceAt(p);
+  if(q){held=q;q.where='held';downPt=p;moved=false;tapHold=false;SFX.pick();try{cv.setPointerCapture(e.pointerId);}catch(_){}setButtons();}
+});
+cv.addEventListener('pointermove',e=>{
+  const p=pt(e);pointer=p;
+  if(held&&downPt&&Math.hypot(p.x-downPt.x,p.y-downPt.y)>8)moved=true;
+  let cur='default';
+  if(mode==='settle'&&spots.some(s=>!s.got&&Math.hypot(p.x-s.x,p.y-s.y)<52))cur='pointer';
+  if(mode==='pack'){if(held)cur='grabbing';else if(pieceAt(p))cur='grab';}
+  cv.style.cursor=cur;
+});
+cv.addEventListener('pointerup',e=>{
+  if(!held||!downPt)return;
+  const p=pt(e);pointer=p;downPt=null;
+  if(moved)tryDrop(p);else tapHold=true;
+});
+cv.addEventListener('contextmenu',e=>{if(held){e.preventDefault();rotateHeld();}});
+addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(!ov.hidden){if((k==='enter')&&primaryBtn&&!e.repeat){e.preventDefault();primaryBtn.click();}return;}
+  if(k==='r'&&!e.repeat)rotateHeld();
+  if(k==='escape'&&held){returnHeld();setButtons();}
+  if(k==='m'&&!e.repeat)toggleMute();
+});
+
+/* ---------- Toast ---------- */
+function toast(t){toastO={text:t,t:3.4};}
+
+/* ---------- Update ---------- */
+function update(dt){
+  T+=dt;
+  if(shake>0)shake=Math.max(0,shake-dt);
+  if(toastO){toastO.t-=dt;if(toastO.t<=0)toastO=null;}
+  homeShow+=(home-homeShow)*Math.min(1,dt*4);
+  const c=CH[G.ci];
+  const calmNow=mode==='settle'||(mode==='pack'&&c&&c.calm);
+  if(calmNow){
+    G.calmT+=dt;melT-=dt;
+    if(melT<=0){melT=.42;const f=MELODY[melI++%MELODY.length];if(f)tone(f,f,.5,'sine',.035);}
+  }
+  if(mode==='settle'){
+    if(pendingAlarm>0){pendingAlarm-=dt;if(pendingAlarm<=0){pendingAlarm=0;triggerAlarm();}}
+  }
+  if(mode==='pack'&&!c.calm){
+    G.chaosT+=dt;timeLeft-=dt;
+    const frac=1-timeLeft/c.time;
+    while(lineIdx<c.lines.length&&frac>=c.lines[lineIdx][0]){curLine={who:c.lines[lineIdx][1],text:c.lines[lineIdx][2],t:0};lineIdx++;shake=.25;}
+    if(curLine)curLine.t+=dt;
+    tickT-=dt;if(tickT<=0){const fast=timeLeft<8;tickT=fast?.5:1;SFX.tick(fast);}
+    if(c.rain){
+      dripT-=dt;
+      if(dripT<=0){
+        dripT=2.4+Math.random()*1.2;
+        const targets=P.filter(p=>p.where==='stage'&&!p.ruined&&!ITEMS[p.id].rock&&!drops.some(d=>d.p===p));
+        if(targets.length){const p=targets[Math.floor(Math.random()*targets.length)];
+          drops.push({p,x:p.sx+p.w*C/2,y:60,ty:p.sy+p.h*C/2});}
+      }
+      for(let i=drops.length-1;i>=0;i--){const d=drops[i];
+        if(d.p.where==='stage'){d.x=d.p.sx+d.p.w*C/2;d.ty=d.p.sy+d.p.h*C/2;}
+        d.y+=520*dt;
+        if(d.y>=d.ty){
+          drops.splice(i,1);
+          if(d.p.where==='stage'&&!d.p.ruined){d.p.ruined=true;leave(d.p.id,'Ruined by rain');SFX.drip();toast(ITEMS[d.p.id].name+': soaked through.');home=Math.max(0,home-25);}
+        }
+      }
+    }
+    if(timeLeft<=0){timeLeft=0;finishPack();}
+  }
+  if(mode==='pack'&&c.calm){
+    const st=P.filter(p=>!p.ruined).length||1;
+    home=Math.round(80*packed().length/st);
+  }
+}
+
+/* ---------- Drawing helpers ---------- */
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function wrap(text,x,y,maxW,lh){
+  const words=text.split(' ');let line='';
+  for(const w of words){const t=line?line+' '+w:w;if(ctx.measureText(t).width>maxW&&line){ctx.fillText(line,x,y);y+=lh;line=w;}else line=t;}
+  if(line)ctx.fillText(line,x,y);return y;
+}
+function shade(hex,amt){const n=parseInt(hex.slice(1),16);let r=(n>>16)+amt,g=(n>>8&255)+amt,b=(n&255)+amt;r=Math.max(0,Math.min(255,r));g=Math.max(0,Math.min(255,g));b=Math.max(0,Math.min(255,b));return `rgb(${r},${g},${b})`;}
+
+function icon(kind,cx,cy,s){
+  ctx.save();ctx.translate(cx,cy);ctx.lineCap='round';ctx.lineJoin='round';
+  const k=s/40;ctx.scale(k,k);
+  switch(kind){
+    case 'doll':
+      ctx.fillStyle='#f2d34b';ctx.beginPath();ctx.ellipse(6,-17,4,8,.5,0,7);ctx.fill();
+      ctx.fillStyle='#f3cfa9';ctx.beginPath();ctx.arc(0,-8,8,0,7);ctx.fill();
+      ctx.fillStyle='#fff';ctx.fillRect(-6,-10,12,4);ctx.strokeStyle='#d33';ctx.lineWidth=1;ctx.strokeRect(-6,-10,12,4);
+      ctx.fillStyle='#4e9a5b';ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(11,18);ctx.lineTo(-11,18);ctx.closePath();ctx.fill();break;
+    case 'blanket':
+      ctx.fillStyle='#606a3c';rr(-17,-13,34,26,3);ctx.fill();ctx.strokeStyle='#c9c39b';ctx.lineWidth=2;
+      for(const y of [-6,0,6]){ctx.beginPath();ctx.moveTo(-15,y);ctx.lineTo(15,y);ctx.stroke();}break;
+    case 'cat':
+      ctx.fillStyle='#e8e6de';ctx.beginPath();ctx.ellipse(-2,6,15,9,0,0,7);ctx.fill();
+      ctx.fillStyle='#8a8983';ctx.beginPath();ctx.ellipse(-6,5,8,6,0,0,7);ctx.fill();
+      ctx.fillStyle='#e8e6de';ctx.beginPath();ctx.arc(13,-4,8,0,7);ctx.fill();
+      ctx.beginPath();ctx.moveTo(15,-10);ctx.lineTo(20,-17);ctx.lineTo(20,-7);ctx.fill();
+      ctx.strokeStyle='#8a8983';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-16,6);ctx.quadraticCurveTo(-24,-6,-18,-12);ctx.stroke();
+      ctx.fillStyle='#222';ctx.beginPath();ctx.arc(16,-5,1.4,0,7);ctx.fill();break;
+    case 'paint':
+      ctx.fillStyle='#f6efe0';ctx.fillRect(-16,-13,32,26);ctx.strokeStyle='#7a4f22';ctx.lineWidth=3;ctx.strokeRect(-16,-13,32,26);
+      ctx.fillStyle='#e05a3a';ctx.beginPath();ctx.arc(-6,-3,6,0,7);ctx.fill();ctx.fillStyle='#3c7fbf';ctx.beginPath();ctx.arc(6,4,6,0,7);ctx.fill();
+      ctx.fillStyle='#f2c230';ctx.beginPath();ctx.arc(5,-6,3,0,7);ctx.fill();break;
+    case 'skillet':
+      ctx.fillStyle='#1e1e1e';ctx.beginPath();ctx.arc(-4,0,13,0,7);ctx.fill();ctx.fillRect(7,-2.5,14,5);
+      ctx.strokeStyle='#555';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(-4,0,9,0,7);ctx.stroke();break;
+    case 'pot':
+      ctx.fillStyle='#1c1c1c';rr(-14,-6,28,18,4);ctx.fill();ctx.fillRect(-16,-9,32,4);ctx.fillRect(-3,-13,6,4);
+      ctx.fillRect(-19,-2,5,3);ctx.fillRect(14,-2,5,3);break;
+    case 'plates':
+      ctx.strokeStyle='#d6dbe0';ctx.lineWidth=2;for(const y of [6,1,-4]){ctx.fillStyle='#aab1b8';ctx.beginPath();ctx.ellipse(0,y,15,5,0,0,7);ctx.fill();ctx.stroke();}break;
+    case 'bow':
+      ctx.strokeStyle='#4b2f14';ctx.lineWidth=3;ctx.beginPath();ctx.arc(-14,0,18,-1.1,1.1);ctx.stroke();
+      ctx.strokeStyle='#ddd';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-6,-16);ctx.lineTo(-6,16);ctx.stroke();
+      ctx.strokeStyle='#2b2b2b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(16,0);ctx.stroke();
+      ctx.fillStyle='#2b2b2b';ctx.beginPath();ctx.moveTo(18,0);ctx.lineTo(12,-4);ctx.lineTo(12,4);ctx.fill();break;
+    case 'geode':
+      ctx.fillStyle='#7c7468';ctx.beginPath();ctx.arc(0,0,15,0,7);ctx.fill();
+      ctx.fillStyle='#4b3a62';ctx.beginPath();ctx.arc(0,0,10,0,7);ctx.fill();
+      ctx.fillStyle='#f4f1ff';for(let i=0;i<9;i++){const a=i*0.7;ctx.beginPath();ctx.moveTo(Math.cos(a)*10,Math.sin(a)*10);ctx.lineTo(Math.cos(a+.25)*4,Math.sin(a+.25)*4);ctx.lineTo(Math.cos(a+.5)*10,Math.sin(a+.5)*10);ctx.fill();}break;
+    case 'quartz':
+      ctx.fillStyle='#f2b9c6';ctx.beginPath();ctx.moveTo(0,-16);ctx.lineTo(9,-6);ctx.lineTo(7,14);ctx.lineTo(-7,14);ctx.lineTo(-9,-6);ctx.closePath();ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(0,-16);ctx.lineTo(0,14);ctx.stroke();break;
+    case 'pyrite':
+      ctx.fillStyle='#e6c75a';ctx.beginPath();ctx.moveTo(-12,-4);ctx.lineTo(0,-12);ctx.lineTo(12,-4);ctx.lineTo(0,4);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#b8962f';ctx.beginPath();ctx.moveTo(-12,-4);ctx.lineTo(0,4);ctx.lineTo(0,15);ctx.lineTo(-12,7);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#9a7a20';ctx.beginPath();ctx.moveTo(12,-4);ctx.lineTo(0,4);ctx.lineTo(0,15);ctx.lineTo(12,7);ctx.closePath();ctx.fill();break;
+    case 'flint':
+      ctx.fillStyle='#3b3936';ctx.beginPath();ctx.moveTo(-14,8);ctx.lineTo(-4,-14);ctx.lineTo(13,-3);ctx.lineTo(6,12);ctx.closePath();ctx.fill();
+      ctx.strokeStyle='#8c8780';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(-4,-14);ctx.lineTo(2,4);ctx.lineTo(13,-3);ctx.stroke();break;
+    case 'jar':
+      ctx.fillStyle='rgba(200,235,230,.6)';rr(-11,-16,22,32,4);ctx.fill();ctx.strokeStyle='#e6f3f0';ctx.lineWidth=2;ctx.stroke();
+      ctx.fillStyle='#8a6a3e';ctx.fillRect(-12,-19,24,5);ctx.fillStyle='#253';
+      for(const [x,y] of [[-4,0],[4,6],[-2,10],[3,-6]]){ctx.beginPath();ctx.arc(x,y,2.2,0,7);ctx.fill();}break;
+    case 'bike':
+      ctx.strokeStyle='#222';ctx.lineWidth=3;ctx.beginPath();ctx.arc(-13,6,9,0,7);ctx.stroke();ctx.beginPath();ctx.arc(13,6,9,0,7);ctx.stroke();
+      ctx.strokeStyle='#f6eee0';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-13,6);ctx.lineTo(-3,-6);ctx.lineTo(9,-6);ctx.lineTo(13,6);ctx.moveTo(-3,-6);ctx.lineTo(2,6);ctx.lineTo(9,-6);ctx.moveTo(-5,-10);ctx.lineTo(0,-10);ctx.moveTo(9,-6);ctx.lineTo(7,-12);ctx.stroke();break;
+    case 'orange':
+      ctx.fillStyle='#f39c2a';ctx.beginPath();ctx.arc(0,2,13,0,7);ctx.fill();ctx.fillStyle='#4f8a3a';ctx.beginPath();ctx.ellipse(5,-12,6,3,-.5,0,7);ctx.fill();break;
+    case 'papers':
+      ctx.fillStyle='#fffdf6';ctx.fillRect(-10,-16,20,30);ctx.fillStyle='#e9e2cf';ctx.fillRect(-7,-13,20,30);ctx.fillStyle='#fffdf6';ctx.fillRect(-10,-16,20,30);
+      ctx.strokeStyle='#7aa0c8';ctx.lineWidth=1;for(let y=-10;y<12;y+=4){ctx.beginPath();ctx.moveTo(-7,y);ctx.lineTo(7,y);ctx.stroke();}
+      ctx.fillStyle='#c33';ctx.font='bold 9px sans-serif';ctx.fillText('A',3,-9);break;
+    case 'coat':
+      ctx.fillStyle='#3f4d63';ctx.beginPath();ctx.moveTo(-8,-15);ctx.lineTo(8,-15);ctx.lineTo(18,-6);ctx.lineTo(14,16);ctx.lineTo(-14,16);ctx.lineTo(-18,-6);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#d9cfb8';for(const y of [-6,1,8]){ctx.beginPath();ctx.arc(0,y,1.8,0,7);ctx.fill();}break;
+    case 'paper':
+      ctx.fillStyle='#f4efe2';ctx.fillRect(-18,-13,36,26);ctx.fillStyle='#8d2f3a';ctx.fillRect(-18,-13,36,7);
+      ctx.fillStyle='#777';for(let y=-2;y<12;y+=4){ctx.fillRect(-15,y,13,1.6);ctx.fillRect(2,y,13,1.6);}break;
+    case 'books':
+      ctx.fillStyle='#2f5f4b';ctx.fillRect(-11,-16,9,32);ctx.fillStyle='#a4522f';ctx.fillRect(-1,-13,9,29);ctx.fillStyle='#d4b85c';ctx.fillRect(9,-10,5,26);
+      ctx.fillStyle='rgba(255,255,255,.6)';ctx.fillRect(-9,-10,5,2);ctx.fillRect(1,-7,5,2);break;
+    case 'shirt':
+      ctx.fillStyle='#ede4d0';ctx.beginPath();ctx.moveTo(-7,-14);ctx.lineTo(7,-14);ctx.lineTo(17,-7);ctx.lineTo(12,-1);ctx.lineTo(10,-3);ctx.lineTo(10,14);ctx.lineTo(-10,14);ctx.lineTo(-10,-3);ctx.lineTo(-12,-1);ctx.lineTo(-17,-7);ctx.closePath();ctx.fill();
+      ctx.strokeStyle='#9c8a66';ctx.lineWidth=1.5;ctx.stroke();break;
+  }
+  ctx.restore();
+}
+function drawPiece(p,x,y,alpha){
+  const it=ITEMS[p.id],w=p.w*C,h=p.h*C;
+  ctx.save();ctx.globalAlpha=alpha==null?1:alpha;
+  ctx.fillStyle='rgba(0,0,0,.28)';rr(x+3,y+5,w-4,h-4,6);ctx.fill();
+  const g=ctx.createLinearGradient(x,y,x,y+h);g.addColorStop(0,shade(it.col,22));g.addColorStop(1,shade(it.col,-14));
+  ctx.fillStyle=g;rr(x+2,y+2,w-4,h-4,6);ctx.fill();
+  ctx.strokeStyle=shade(it.col,-60);ctx.lineWidth=2;ctx.stroke();
+  // seams so a multi-cell piece reads as its size
+  ctx.strokeStyle='rgba(0,0,0,.08)';ctx.lineWidth=1;
+  for(let i=1;i<p.w;i++){ctx.beginPath();ctx.moveTo(x+i*C,y+6);ctx.lineTo(x+i*C,y+h-6);ctx.stroke();}
+  for(let j=1;j<p.h;j++){ctx.beginPath();ctx.moveTo(x+6,y+j*C);ctx.lineTo(x+w-6,y+j*C);ctx.stroke();}
+  const s=Math.min(w,h)*(p.w*p.h===1?.58:.62);
+  icon(it.icon,x+w/2,y+h/2-(p.w*p.h===1?6:8),s);
+  ctx.fillStyle='rgba(20,14,8,.78)';const lab=it.name;ctx.font=`${p.w*p.h===1?10:12}px ${F.disp}`;
+  const tw=Math.min(w-8,ctx.measureText(lab).width+10);rr(x+w/2-tw/2,y+h-20,tw,15,3);ctx.fill();
+  ctx.fillStyle='#fff8ea';ctx.textAlign='center';ctx.textBaseline='middle';
+  let t=lab;while(ctx.measureText(t).width>w-14&&t.length>3)t=t.slice(0,-2);if(t!==lab)t=t.slice(0,-1)+'…';
+  ctx.fillText(t,x+w/2,y+h-12);
+  if(it.dad){ctx.font=`11px ${F.mono}`;ctx.fillStyle='rgba(255,255,255,.75)';ctx.textAlign='left';ctx.fillText("DAD'S",x+8,y+13);}
+  if(p.ruined){
+    ctx.fillStyle='rgba(60,80,100,.62)';rr(x+2,y+2,w-4,h-4,6);ctx.fill();
+    ctx.save();ctx.translate(x+w/2,y+h/2);ctx.rotate(-.18);ctx.strokeStyle='#ff8e72';ctx.lineWidth=2.5;ctx.font=`bold 13px ${F.mono}`;
+    const sw=ctx.measureText('RUINED').width+12;ctx.strokeRect(-sw/2,-11,sw,22);ctx.fillStyle='#ff8e72';ctx.fillText('RUINED',0,1);ctx.restore();
+  }
+  ctx.restore();
+  ctx.textAlign='left';ctx.textBaseline='alphabetic';
+}
+
+/* ---------- Scenes ---------- */
+const stars=[];for(let i=0;i<120;i++)stars.push({x:Math.random()*VW,y:Math.random()*260,r:Math.random()*1.3+.3,p:Math.random()*6});
+function sky(top,bot){const g=ctx.createLinearGradient(0,0,0,470);g.addColorStop(0,top);g.addColorStop(1,bot);ctx.fillStyle=g;ctx.fillRect(0,0,VW,VH);}
+function hills(base,amp,col,seed,freq){ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(0,VH);for(let x=0;x<=VW;x+=8){ctx.lineTo(x,base-amp*(.5+.5*Math.sin(x*freq+seed))*(.6+.4*Math.sin(x*freq*2.3+seed*2)));}ctx.lineTo(VW,VH);ctx.fill();}
+function mesas(base,col){ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(0,base);ctx.lineTo(90,base);ctx.lineTo(110,base-70);ctx.lineTo(250,base-70);ctx.lineTo(275,base);ctx.lineTo(560,base);ctx.lineTo(585,base-45);ctx.lineTo(660,base-45);ctx.lineTo(690,base);ctx.lineTo(VW,base);ctx.lineTo(VW,VH);ctx.lineTo(0,VH);ctx.fill();}
+function scene(name){
+  if(name==='desert'){
+    sky('#2d2350','#e9925a');
+    ctx.fillStyle='#ffd27a';ctx.beginPath();ctx.arc(820,250,34,0,7);ctx.fill();
+    mesas(300,'#7a4a49');ctx.fillStyle='#d9a56a';ctx.fillRect(0,300,VW,170);
+    // trailer
+    ctx.fillStyle='#efe6d4';rr(70,230,250,100,14);ctx.fill();ctx.fillStyle='#4d8ab0';ctx.fillRect(70,282,250,10);
+    ctx.fillStyle='#ffe9a8';ctx.fillRect(100,248,42,26);ctx.fillRect(240,248,42,26);ctx.fillStyle='#8f7d63';ctx.fillRect(170,250,34,72);
+    ctx.fillStyle='#333';ctx.beginPath();ctx.arc(130,334,12,0,7);ctx.arc(270,334,12,0,7);ctx.fill();
+    // Blue Goose
+    ctx.fillStyle='#3a6ea8';rr(620,270,190,52,14);ctx.fill();rr(660,240,110,40,12);ctx.fill();
+    ctx.fillStyle='#bcd8ee';ctx.fillRect(672,248,40,24);ctx.fillRect(718,248,42,24);
+    ctx.fillStyle='#222';ctx.beginPath();ctx.arc(660,324,15,0,7);ctx.arc(775,324,15,0,7);ctx.fill();
+    ctx.fillStyle='#f6eedb';ctx.font=`14px ${F.disp}`;ctx.fillText('the Blue Goose',660,350);
+    // cactus
+    ctx.fillStyle='#3f6b42';rr(470,220,18,100,8);ctx.fill();rr(450,250,14,40,7);ctx.fill();rr(494,236,14,46,7);ctx.fill();
+  } else if(name==='battle'){
+    sky('#1d2b48','#7f9bb7');
+    for(const s of stars){ctx.globalAlpha=.4+.4*Math.sin(T+s.p);ctx.fillStyle='#fff';ctx.fillRect(s.x,s.y*.6,s.r,s.r);}ctx.globalAlpha=1;
+    hills(300,110,'#4b5a6e',1,.006);ctx.fillStyle='#b9a382';ctx.fillRect(0,300,VW,170);
+    // depot
+    ctx.fillStyle='#8b5a3c';ctx.fillRect(330,200,320,110);ctx.fillStyle='#5a3626';ctx.beginPath();ctx.moveTo(310,200);ctx.lineTo(490,150);ctx.lineTo(670,200);ctx.fill();
+    ctx.fillStyle='#ffe2a0';ctx.fillRect(400,175,30,22);ctx.fillRect(360,230,34,30);ctx.fillRect(580,230,34,30);ctx.fillStyle='#4a2c1d';ctx.fillRect(470,240,40,70);
+    ctx.fillStyle='#e8dcc0';ctx.fillRect(420,210,140,20);ctx.fillStyle='#4a2c1d';ctx.font=`13px ${F.mono}`;ctx.textAlign='center';ctx.fillText('BATTLE MOUNTAIN',490,224);ctx.textAlign='left';
+    ctx.fillStyle='#7a6a55';ctx.fillRect(0,318,VW,8);ctx.fillRect(0,334,VW,8);ctx.fillStyle='#5a4a3a';for(let x=0;x<VW;x+=28)ctx.fillRect(x,314,10,32);
+  } else if(name==='phoenix'){
+    sky('#4c86c2','#f4d8a6');
+    ctx.fillStyle='#fff3c4';ctx.beginPath();ctx.arc(150,110,40,0,7);ctx.fill();
+    hills(300,60,'#c3a07c',3,.008);ctx.fillStyle='#d7c39b';ctx.fillRect(0,300,VW,170);
+    ctx.fillStyle='#e9d8bb';ctx.fillRect(300,180,330,140);ctx.fillStyle='#b5543a';ctx.beginPath();ctx.moveTo(280,185);ctx.lineTo(465,120);ctx.lineTo(650,185);ctx.fill();
+    ctx.fillStyle='#5d7fa0';ctx.fillRect(340,220,50,40);ctx.fillRect(540,220,50,40);ctx.fillStyle='#7b4b2e';ctx.fillRect(445,240,42,80);
+    for(const [x,y] of [[120,250],[820,240],[730,270]]){ctx.fillStyle='#6b4a2b';ctx.fillRect(x-5,y,10,60);ctx.fillStyle='#3f7a3a';ctx.beginPath();ctx.arc(x,y-10,40,0,7);ctx.fill();
+      ctx.fillStyle='#f39c2a';for(let i=0;i<7;i++){ctx.beginPath();ctx.arc(x+Math.cos(i*1.7)*24,y-10+Math.sin(i*2.3)*22,5,0,7);ctx.fill();}}
+  } else if(name==='welch'){
+    sky('#3b4350','#77808b');
+    hills(260,160,'#3f4c43',2,.009);hills(320,90,'#2e3a33',5,.012);
+    ctx.fillStyle='#4a463f';ctx.fillRect(0,330,VW,140);
+    // house on stilts
+    ctx.fillStyle='#5f5a52';ctx.fillRect(330,170,300,120);ctx.fillStyle='#3a3631';ctx.beginPath();ctx.moveTo(315,172);ctx.lineTo(480,120);ctx.lineTo(645,172);ctx.fill();
+    ctx.fillStyle='#d9c96a';ctx.fillRect(345,200,90,90);
+    ctx.fillStyle='#2a2723';for(const x of [345,420,520,610])ctx.fillRect(x,290,8,60);
+    ctx.fillStyle='#ffe9a8';ctx.fillRect(470,205,40,30);ctx.fillRect(560,205,40,30);
+    ctx.fillStyle='#e8dfc6';ctx.font=`13px ${F.mono}`;ctx.fillText('93 LITTLE HOBART ST.',368,160);
+  } else {
+    sky('#121a2b','#2c3a55');
+    for(const s of stars){ctx.globalAlpha=.4+.4*Math.sin(T+s.p);ctx.fillStyle='#fff';ctx.fillRect(s.x,s.y,s.r,s.r);}ctx.globalAlpha=1;
+  }
+}
+
+/* ---------- Render ---------- */
+function hudBar(title,sub){
+  ctx.fillStyle='rgba(10,16,22,.72)';ctx.fillRect(0,0,VW,64);
+  ctx.fillStyle='#cfa166';ctx.font=`22px ${F.disp}`;ctx.fillText(title,22,32);
+  ctx.fillStyle='#b8c4cb';ctx.font=`13px ${F.body}`;ctx.fillText(sub,22,52);
+}
+function homeMeter(x,y){
+  ctx.fillStyle='#e9e2cc';ctx.font=`12px ${F.mono}`;ctx.textAlign='right';ctx.fillText('HOME',x-8,y+12);ctx.textAlign='left';
+  ctx.fillStyle='rgba(255,255,255,.15)';rr(x,y,200,16,8);ctx.fill();
+  const v=Math.max(0,Math.min(100,homeShow));
+  ctx.fillStyle=v>=99?'#f2c14e':'#8cc4ae';rr(x,y,Math.max(16,2*v),16,8);ctx.fill();
+  ctx.fillStyle='#10231c';ctx.font=`bold 11px ${F.mono}`;ctx.fillText(Math.round(v)+'%',x+8,y+12);
+}
+function renderSettle(){
+  const c=ch();scene(c.scene);
+  // hotspots
+  for(const s of spots){if(s.got)continue;
+    const it=ITEMS[s.id],pulse=.5+.5*Math.sin(T*2.4+s.ph);
+    ctx.fillStyle=`rgba(255,240,190,${.18+.2*pulse})`;ctx.beginPath();ctx.arc(s.x,s.y,40+6*pulse,0,7);ctx.fill();
+    ctx.fillStyle='rgba(255,250,235,.9)';ctx.beginPath();ctx.arc(s.x,s.y,32,0,7);ctx.fill();
+    icon(it.icon,s.x,s.y,42);
+    ctx.font=`13px ${F.disp}`;const tw=ctx.measureText(it.name).width+14;
+    ctx.save();ctx.translate(s.x,s.y+50);ctx.rotate(-.03);ctx.fillStyle='rgba(239,229,191,.95)';ctx.fillRect(-tw/2,-11,tw,22);
+    ctx.fillStyle='#2a1c0f';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(it.name,0,1);ctx.restore();ctx.textAlign='left';ctx.textBaseline='alphabetic';
+  }
+  hudBar(`Chapter ${G.ci+1}: ${c.name}`,c.place);homeMeter(730,24);
+  // bottom panel
+  ctx.fillStyle='rgba(12,18,24,.86)';ctx.fillRect(0,476,VW,124);
+  ctx.fillStyle='#8cc4ae';ctx.font=`12px ${F.mono}`;ctx.fillText(pendingAlarm>0?'':'CALM · NO CLOCK',22,500);
+  if(caption){
+    icon(ITEMS[caption.id].icon,52,545,44);
+    ctx.fillStyle='#cfa166';ctx.font=`17px ${F.disp}`;ctx.fillText(ITEMS[caption.id].name,90,522);
+    ctx.fillStyle='#e6ded0';ctx.font=`15px ${F.body}`;wrap(caption.text,90,546,560,20);
+  } else {
+    ctx.fillStyle='#e6ded0';ctx.font=`15px ${F.body}`;ctx.fillText('Click on the glowing things to unpack them.',22,530);
+  }
+  ctx.fillStyle='#9fb0ba';ctx.font=`12px ${F.mono}`;ctx.fillText('YOUR THINGS',690,500);
+  collected.forEach((id,i)=>{const x=700+(i%5)*48,y=524+Math.floor(i/5)*44;ctx.fillStyle='rgba(255,255,255,.08)';rr(x-20,y-18,40,40,6);ctx.fill();icon(ITEMS[id].icon,x,y+2,30);});
+  if(pendingAlarm>0&&pendingAlarm<1.2){ctx.fillStyle=`rgba(217,72,43,${.35*(1.2-pendingAlarm)})`;ctx.fillRect(0,0,VW,VH);}
+}
+function containerChrome(){
+  const w=box.cols*C,h=box.rows*C,k=box.kind;
+  ctx.save();
+  if(k==='trunk'){ctx.fillStyle='#2f5f93';rr(BX-46,BY-70,w+92,h+120,26);ctx.fill();ctx.fillStyle='#244b75';rr(BX-30,BY-54,w+60,h+84,14);ctx.fill();
+    ctx.fillStyle='#d23b2b';ctx.fillRect(BX-40,BY+h+28,28,12);ctx.fillRect(BX+w+12,BY+h+28,28,12);ctx.fillStyle='#ddd';ctx.fillRect(BX+w/2-30,BY+h+30,60,12);}
+  else if(k==='bag'){ctx.fillStyle='#b88a52';ctx.beginPath();ctx.moveTo(BX-26,BY-30);ctx.lineTo(BX+w+26,BY-30);ctx.lineTo(BX+w+20,BY+h+24);ctx.lineTo(BX-20,BY+h+24);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#a07642';for(let x=BX-20;x<BX+w+20;x+=16){ctx.beginPath();ctx.moveTo(x,BY-30);ctx.lineTo(x+8,BY-44);ctx.lineTo(x+16,BY-30);ctx.fill();}}
+  else if(k==='seat'){ctx.fillStyle='#6b4d3a';rr(BX-150,BY-40,w+300,h+80,18);ctx.fill();
+    ctx.fillStyle='#55392a';rr(BX-140,BY-30,120,h+60,12);ctx.fill();rr(BX+w+20,BY-30,120,h+60,12);ctx.fill();
+    ctx.fillStyle='#e8dcc0';ctx.font=`16px ${F.disp}`;ctx.textAlign='center';ctx.fillText('Brian',BX-80,BY+h/2+6);ctx.fillText('Lori',BX+w+80,BY+h/2+6);ctx.textAlign='left';}
+  else if(k==='box'){ctx.fillStyle='#7a5532';ctx.fillRect(BX-22,BY-22,w+44,h+44);ctx.fillStyle='#5a3d22';for(let y=BY-22;y<BY+h+22;y+=14)ctx.fillRect(BX-22,y,w+44,2);
+    ctx.fillStyle='#4a3020';ctx.fillRect(BX-22,BY+h+8,w+44,14);ctx.fillStyle='#bbb';for(const x of [BX-14,BX+w+10])ctx.fillRect(x,BY-16,4,4);}
+  else if(k==='suitcase'){ctx.fillStyle='#7b2f33';rr(BX-28,BY-28,w+56,h+56,14);ctx.fill();ctx.strokeStyle='#d8b56a';ctx.lineWidth=3;rr(BX-20,BY-20,w+40,h+40,10);ctx.stroke();
+    ctx.fillStyle='#3a1a1c';rr(BX+w/2-34,BY-50,68,20,8);ctx.fill();ctx.fillStyle='#d8b56a';ctx.fillRect(BX+w/2-50,BY-30,10,8);ctx.fillRect(BX+w/2+40,BY-30,10,8);}
+  // floor of container
+  ctx.fillStyle=k==='suitcase'?'#e9dcc4':k==='box'?'#3b2a1a':k==='bag'?'#c79a62':k==='seat'?'#8a6750':'#162b44';
+  ctx.fillRect(BX,BY,w,h);
+  ctx.strokeStyle=k==='trunk'?'rgba(255,255,255,.12)':'rgba(0,0,0,.15)';ctx.lineWidth=1;
+  for(let x=0;x<=box.cols;x++){ctx.beginPath();ctx.moveTo(BX+x*C,BY);ctx.lineTo(BX+x*C,BY+h);ctx.stroke();}
+  for(let y=0;y<=box.rows;y++){ctx.beginPath();ctx.moveTo(BX,BY+y*C);ctx.lineTo(BX+w,BY+y*C);ctx.stroke();}
+  ctx.restore();
+  ctx.fillStyle='#efe5bf';ctx.font=`16px ${F.disp}`;ctx.textAlign='center';ctx.fillText(box.name,BX+w/2,Math.min(VH-14,BY+h+(k==='trunk'?78:k==='seat'?66:56)));ctx.textAlign='left';
+}
+function renderPack(){
+  const c=ch(),calm=!!c.calm;
+  // background
+  if(calm){const g=ctx.createRadialGradient(480,300,40,480,300,620);g.addColorStop(0,'#5a4632');g.addColorStop(1,'#1b1712');ctx.fillStyle=g;ctx.fillRect(0,0,VW,VH);}
+  else if(c.rain){ctx.fillStyle='#232b33';ctx.fillRect(0,0,VW,VH);}
+  else{ctx.fillStyle='#0c141c';ctx.fillRect(0,0,VW,VH);
+    const hx=480+380*Math.sin(T*1.3);const g=ctx.createRadialGradient(hx,300,10,hx,300,360);g.addColorStop(0,'rgba(255,236,170,.13)');g.addColorStop(1,'rgba(255,236,170,0)');ctx.fillStyle=g;ctx.fillRect(0,0,VW,VH);}
+  // staging floor
+  ctx.fillStyle=calm?'rgba(255,240,210,.06)':'rgba(255,255,255,.04)';rr(18,120,492,462,10);ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.08)';ctx.lineWidth=1;for(let y=140;y<580;y+=30){ctx.beginPath();ctx.moveTo(24,y);ctx.lineTo(504,y);ctx.stroke();}
+  ctx.fillStyle=calm?'#e9c98f':'#9fb0ba';ctx.font=`12px ${F.mono}`;ctx.fillText(c.stageLabel,34,140);
+  containerChrome();
+  // placed pieces
+  for(const p of P){if(p.where==='grid')drawPiece(p,BX+p.gx*C,BY+p.gy*C);}
+  for(const p of P){if(p.where==='stage')drawPiece(p,p.sx,p.sy);}
+  // ghost + held
+  if(held){
+    const [gx,gy]=heldCell(held,pointer);
+    if(inBox(pointer)){
+      const ok=!fitReason(held,gx,gy);ctx.fillStyle=ok?'rgba(140,196,174,.45)':'rgba(217,72,43,.4)';
+      for(let x=0;x<held.w;x++)for(let y=0;y<held.h;y++){const cx=gx+x,cy=gy+y;if(cx>=0&&cy>=0&&cx<box.cols&&cy<box.rows)ctx.fillRect(BX+cx*C+2,BY+cy*C+2,C-4,C-4);}
+    }
+    const hx=pointer.x-held.w*C/2,hy=pointer.y-held.h*C/2;
+    if(pointer.x>-50)drawPiece(held,hx,hy,.92);
+  }
+  // rain
+  if(c.rain){
+    ctx.strokeStyle='rgba(180,200,220,.25)';ctx.lineWidth=1;
+    for(let i=0;i<90;i++){const x=(i*97+T*60)%VW,y=(i*53+T*700)%VH;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-4,y+14);ctx.stroke();}
+    for(const d of drops){ctx.fillStyle='#9fd0ff';ctx.beginPath();ctx.moveTo(d.x,d.y-14);ctx.quadraticCurveTo(d.x+8,d.y,d.x,d.y+6);ctx.quadraticCurveTo(d.x-8,d.y,d.x,d.y-14);ctx.fill();
+      ctx.strokeStyle='rgba(159,208,255,.5)';ctx.setLineDash([4,6]);ctx.beginPath();ctx.moveTo(d.x,64);ctx.lineTo(d.x,d.ty);ctx.stroke();ctx.setLineDash([]);}
+  }
+  // HUD
+  hudBar(`Chapter ${G.ci+1}: ${c.name}`,calm?'No timer. Pack whatever you want to keep.':'Pack fast. Anything left on this side gets left behind.');
+  if(calm){homeMeter(730,24);}
+  else{
+    const urgent=timeLeft<8;
+    ctx.textAlign='right';ctx.fillStyle=urgent?'#ff7a5c':'#efe5bf';ctx.font=`40px ${F.disp}`;
+    const s=Math.ceil(timeLeft);ctx.fillText('0:'+(s<10?'0':'')+s,VW-24,48);
+    ctx.font=`11px ${F.mono}`;ctx.fillStyle='#9fb0ba';ctx.fillText(c.rain?'UNTIL THE CEILING BURSTS':'UNTIL THE CAR LEAVES',VW-24,60);ctx.textAlign='left';
+    if(urgent){ctx.fillStyle=`rgba(217,72,43,${.12+.1*Math.sin(T*10)})`;ctx.fillRect(0,0,VW,VH);}
+  }
+  // speech line
+  if(curLine&&!calm){
+    const a=Math.min(1,curLine.t*4);ctx.save();ctx.globalAlpha=a;
+    ctx.font=`bold 15px ${F.body}`;const txt=(curLine.who?curLine.who+': ':'')+curLine.text;const tw=Math.min(430,ctx.measureText(txt).width+28);
+    const x=Math.min(VW-tw-20,BX+box.cols*C/2-tw/2),y=78;
+    ctx.fillStyle=curLine.who==='DAD'?'#d9482b':curLine.who?'#efe5bf':'rgba(239,229,191,.16)';rr(x,y,tw,30,6);ctx.fill();
+    ctx.fillStyle=curLine.who==='DAD'?'#fff':curLine.who?'#2a1c0f':'#efe5bf';ctx.font=`bold 14px ${F.body}`;
+    let t=txt;while(ctx.measureText(t).width>tw-24&&t.length>4)t=t.slice(0,-2);if(t!==txt)t=t.slice(0,-1)+'…';
+    ctx.fillText(t,x+14,y+20);ctx.restore();
+  }
+}
+function renderTitle(){
+  scene('night');
+  ctx.fillStyle='#d9a56a';ctx.fillRect(0,420,VW,180);
+  // headlights on a road
+  ctx.fillStyle='#2b2b2b';ctx.beginPath();ctx.moveTo(380,600);ctx.lineTo(470,420);ctx.lineTo(490,420);ctx.lineTo(580,600);ctx.fill();
+  const g=ctx.createRadialGradient(480,560,10,480,520,260);g.addColorStop(0,'rgba(255,236,170,.35)');g.addColorStop(1,'rgba(255,236,170,0)');ctx.fillStyle=g;ctx.fillRect(0,300,VW,300);
+}
+function render(){
+  ctx.save();
+  if(shake>0){ctx.translate((Math.random()-.5)*10*shake,(Math.random()-.5)*10*shake);}
+  const view=mode==='paused'?pausedFrom:mode;
+  if(view==='settle')renderSettle();
+  else if(view==='pack'||view==='card'&&P.length&&box)renderPack();
+  else if(view==='card'&&!P.length)scene(ch().scene);
+  else renderTitle();
+  ctx.restore();
+  if(toastO&&(mode==='pack'||mode==='settle')){
+    ctx.save();ctx.globalAlpha=Math.min(1,toastO.t*2);ctx.font=`bold 14px ${F.body}`;
+    const tw=Math.min(600,ctx.measureText(toastO.text).width+30);const x=VW/2-tw/2,y=mode==='pack'?VH-48:430;
+    ctx.fillStyle='rgba(239,229,191,.96)';rr(x,y,tw,32,6);ctx.fill();ctx.fillStyle='#2a1c0f';ctx.textAlign='center';ctx.fillText(toastO.text,VW/2,y+21);ctx.restore();ctx.textAlign='left';
+  }
+}
+
+/* ---------- Loop ---------- */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  if(mode!=='paused')update(dt);
+  render();
+  requestAnimationFrame(frame);
+}
+showTitle();
+requestAnimationFrame(frame);
+})();
+</script>
